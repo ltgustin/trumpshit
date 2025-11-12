@@ -88,7 +88,7 @@ export default function Home() {
                     <div className="flex items-start justify-between gap-4 mb-4">
                         <div className="flex-1">
                             <h1 className="text-4xl sm:text-5xl font-bold mb-2 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-gray-50 dark:via-gray-100 dark:to-gray-50 bg-clip-text text-transparent">
-                                Trump Shit
+                                Trump 💩
                             </h1>
                             <p className="text-gray-600 dark:text-gray-400 text-lg">
                                 Daily Digest • {digest.length} {digest.length === 1 ? 'article' : 'articles'}

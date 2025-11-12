@@ -1,11 +1,45 @@
 import { fetchArticles } from "../../src/lib/fetchArticles.js";
 import { analyzeArticle } from "../../src/lib/analyzeArticles.js";
-import { put } from "@vercel/blob";
+import fs from "fs";
+import path from "path";
 
 // Constants
 const MAX_ARTICLES = 5;
 const CACHE_DURATION = 3600; // 1 hour in seconds
 const BLOB_KEY = "digest.json";
+
+// Helper function to save digest (works in both Vercel and local)
+async function saveDigest(data) {
+    const isVercel = process.env.VERCEL === '1' || process.env.BLOB_READ_WRITE_TOKEN;
+    
+    if (isVercel) {
+        // Use Vercel Blob Storage in production
+        try {
+            const { put } = await import("@vercel/blob");
+            const blob = await put(BLOB_KEY, JSON.stringify(data, null, 2), {
+                access: 'public',
+                contentType: 'application/json',
+                addRandomSuffix: false,
+            });
+            console.log(`Digest saved to blob storage: ${blob.url}`);
+            return true;
+        } catch (err) {
+            console.error("Failed to save digest to blob storage:", err);
+            return false;
+        }
+    } else {
+        // Use file system for local development
+        try {
+            const filePath = path.join(process.cwd(), "public", "digest.json");
+            fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+            console.log(`Digest saved to local file: ${filePath}`);
+            return true;
+        } catch (err) {
+            console.error("Failed to save digest to local file:", err);
+            return false;
+        }
+    }
+}
 
 /**
  * API handler for generating and updating the digest
@@ -18,20 +52,21 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // Security: Allow Vercel cron jobs or manual trigger with secret token
+    // Security: Allow Vercel cron jobs, manual trigger with secret token, or local development
     const isVercelCron = req.headers['x-vercel-cron'] === '1';
     const hasSecret = req.query.secret === process.env.DIGEST_SECRET;
+    const isLocalDev = process.env.NODE_ENV === 'development' && !process.env.VERCEL;
     
-    if (!isVercelCron && !hasSecret) {
+    if (!isVercelCron && !hasSecret && !isLocalDev) {
         return res.status(401).json({ 
             error: 'Unauthorized',
-            message: 'This endpoint can only be called by Vercel cron or with a valid secret token'
+            message: 'This endpoint can only be called by Vercel cron, with a valid secret token, or in local development'
         });
     }
 
     try {
         const startTime = Date.now();
-        const triggerType = isVercelCron ? 'Vercel Cron' : 'Manual';
+        const triggerType = isVercelCron ? 'Vercel Cron' : (isLocalDev ? 'Local Dev' : 'Manual');
         console.log(`[${triggerType}] Starting digest generation at ${new Date().toISOString()}`);
 
         const articles = await fetchArticles();
@@ -42,18 +77,8 @@ export default async function handler(req, res) {
             topArticles.map(art => analyzeArticle(art))
         );
 
-        // Save digest to Vercel Blob Storage (serverless-compatible storage)
-        try {
-            const blob = await put(BLOB_KEY, JSON.stringify(analyzed, null, 2), {
-                access: 'public',
-                contentType: 'application/json',
-                addRandomSuffix: false, // Overwrite existing file
-            });
-            console.log(`Digest saved to blob storage: ${blob.url}`);
-        } catch (err) {
-            console.error("Failed to save digest to blob storage:", err);
-            // Continue even if blob storage fails - the digest was still generated
-        }
+        // Save digest (uses Blob Storage on Vercel, file system locally)
+        await saveDigest(analyzed);
 
         const duration = Date.now() - startTime;
         console.log(`[${triggerType}] Digest updated successfully: ${analyzed.length} articles in ${duration}ms`);
