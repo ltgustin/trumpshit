@@ -66,8 +66,13 @@ export default function Home() {
     const [theme, toggleTheme] = useTheme();
 
     useEffect(() => {
-        fetch("/digest.json")
-            .then(res => res.json())
+        fetch("/api/digest.json")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Failed to fetch digest');
+                }
+                return res.json();
+            })
             .then(data => {
                 setDigest(data);
                 setLoading(false);

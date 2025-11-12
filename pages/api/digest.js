@@ -1,11 +1,11 @@
 import { fetchArticles } from "../../src/lib/fetchArticles.js";
 import { analyzeArticle } from "../../src/lib/analyzeArticles.js";
-import fs from "fs";
-import path from "path";
+import { put } from "@vercel/blob";
 
 // Constants
 const MAX_ARTICLES = 5;
 const CACHE_DURATION = 3600; // 1 hour in seconds
+const BLOB_KEY = "digest.json";
 
 /**
  * API handler for generating and updating the digest
@@ -42,9 +42,18 @@ export default async function handler(req, res) {
             topArticles.map(art => analyzeArticle(art))
         );
 
-        // Save digest.json in the "public" folder
-        const filePath = path.join(process.cwd(), "public", "digest.json");
-        fs.writeFileSync(filePath, JSON.stringify(analyzed, null, 2));
+        // Save digest to Vercel Blob Storage (serverless-compatible storage)
+        try {
+            const blob = await put(BLOB_KEY, JSON.stringify(analyzed, null, 2), {
+                access: 'public',
+                contentType: 'application/json',
+                addRandomSuffix: false, // Overwrite existing file
+            });
+            console.log(`Digest saved to blob storage: ${blob.url}`);
+        } catch (err) {
+            console.error("Failed to save digest to blob storage:", err);
+            // Continue even if blob storage fails - the digest was still generated
+        }
 
         const duration = Date.now() - startTime;
         console.log(`[${triggerType}] Digest updated successfully: ${analyzed.length} articles in ${duration}ms`);

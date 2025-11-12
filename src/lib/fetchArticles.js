@@ -30,8 +30,9 @@ export async function fetchArticles() {
     // --- Fetch from GNews ---
     try {
         if (!process.env.GNEWS_API_KEY) {
-            console.warn("GNEWS_API_KEY not set, skipping GNews API");
+            console.warn("GNEWS_API_KEY not set, skipping GNews API. Make sure it's configured in Vercel environment variables.");
         } else {
+            console.log("Fetching articles from GNews API...");
             const gnewsUrl = `https://gnews.io/api/v4/search?q="Donald Trump"&lang=en&max=${GNEWS_MAX_ARTICLES}&apikey=${process.env.GNEWS_API_KEY}`;
             
             const controller = new AbortController();
