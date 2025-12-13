@@ -2,6 +2,8 @@
 
 A daily digest aggregator that fetches and analyzes Trump-related news articles from multiple sources using AI-powered sentiment analysis and summarization.
 
+Check out [Trump Shit](https://trumpshit.vercel.app/) hosted on Vercel
+
 ## Features
 
 - 📰 **Multi-source aggregation** - Fetches articles from GNews API and RSS feeds
